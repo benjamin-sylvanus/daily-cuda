@@ -1,61 +1,91 @@
+#include "cuda_common.cuh"
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include "stdio.h"
-#include "stdlib.h"
-#include "cstring"
-#include "time.h"
+#include "common.h"
+#include <cstdlib>
+#include <cstring>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
-__global__ void mem_trs_test(int * input)
-{
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    printf("tid:%d , gid:%d , value:%d \n ", threadIdx.x,gid,input[gid]);
+__global__ void sum_array_gpu(int *a, int *b, int *c, int size) {
+  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (gid < size) {
+    c[gid] = a[gid] + b[gid];
+  }
 }
 
-__global__ void mem_trs_test2(int * input, int size)
-{
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (gid < size)
-        printf("tid : %d , gid : %d , value : %d \n ", threadIdx.x,gid,input[gid]);
+void sum_array_cpu(int *a, int *b, int *c, int size) {
+  for (int i = 0; i < size; i++) {
+    c[i] = a[i] + b[i];
+  }
 }
 
-int main () 
-{
-    int size = 150;
-    int byte_size = size * sizeof(int);
+int main() {
+  int size = 10000;
+  int block_size = 128;
 
-    int * h_input;
-    h_input = (int*)malloc(byte_size);
+  cudaError error;
 
-    time_t t;
-    srand((unsigned) time(&t));
-    for(int i = 0; i< size; i++)
-    {
-        h_input[i] = (int) (rand() & 0xff);
-    }
-    
-    int * d_input;
-    cudaMalloc((void**)&d_input, byte_size);
+  int NO_BYTES = size * sizeof(int);
+  // create host pointers
+  int *hostA, hostB, hostResults, hostC;
 
-    cudaMemcpy(d_input,h_input,byte_size,cudaMemcpyHostToDevice);
+  // allocate memory for host pointers
+  hostA = (int *)malloc(NO_BYTES);
+  hostB = (int *)malloc(NO_BYTES);
+  hostResults = (int *)malloc(NO_BYTES);
+  hostC = (int *)malloc(NO_BYTES);
 
-    // init block and grid
-    dim3 block(32);
-    dim3 grid(5);
+  // init host pointers
+  time_t t;
 
-    mem_trs_test2<<<grid,block>>> (d_input,size);
+  srand((unsigned)time(&t));
 
-    // Wait for gpu to finish
-    cudaDeviceSynchronize();
+  for (int i = 0; i < size; i++) {
+    hostA[i] = (int)(rand() & 0xFF);
+  }
+  for (int i = 0; i < size; i++) {
+    hostB[i] = (int)(rand() & 0xFF);
+  }
 
-    // Free device memory
-    cuda_Free(d_input);
+  // cpu sum array
+  sum_array_cpu(hostA, hostB, hostC, size);
 
-    // Free host memory
-    free(h_input);  
-    
-    cudaDeviceReset();
-    return 0;
+  // device pointers
+  int *deviceA, deviceB, deviceC;
+  gpuErrchk(cudaMalloc((int **)&deviceA, NO_BYTES));
+  gpuErrchk(cudaMalloc((int **)&deviceB, NO_BYTES));
+  gpuErrchk(cudaMalloc((int **)&deviceC, NO_BYTES));
 
+  // memory transfer host -> device
+  cudaMemcpy(deviceA, hostA, NO_BYTES, cudaMemcpyHostToDevice);
+  cudaMemcpy(deviceB, hostB, NO_BYTES, cudaMemcpyHostToDevice);
+
+  //kernel launch parameters
+  dim3 block(block_size);
+  dim3 grid((size / block.x) + 1);
+
+  sum_array_gpu<<<grid, block>>>(deviceA, deviceB, deviceC, size);
+
+  // Wait for results
+  cudaDeviceSynchronize();
+
+  // Copy memory back to host
+  cudaMemcpy(hostResults, deviceC, NO_BYTES, cudaMemcpyDeviceToHost);
+
+  // array comparision
+  compare_arrays(hostC, hostResults);
+
+  // free device memory
+  cudaFree(deviceC);
+  cudaFree(deviceB);
+  cudaFree(deviceA);
+
+  // free host memory
+  free(hostResults);
+  free(hostB);
+  free(hostA);
+
+  return EXIT_SUCCESS;
 }
-
-
