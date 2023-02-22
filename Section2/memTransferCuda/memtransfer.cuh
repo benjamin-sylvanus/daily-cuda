@@ -17,7 +17,7 @@ __global__ void mem_trs_test2(int *input, int size) {
            input[gid]);
 }
 
-int main() {
+int memtransferexample() {
   int size = 150;
   int byte_size = size * sizeof(int);
 
@@ -45,7 +45,7 @@ int main() {
   cudaDeviceSynchronize();
 
   // Free device memory
-  cuda_Free(d_input);
+  cudaFree(d_input);
 
   // Free host memory
   free(h_input);

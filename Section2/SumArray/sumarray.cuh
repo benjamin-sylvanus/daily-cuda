@@ -1,5 +1,5 @@
-#include "common.h"
-#include "cuda_common.cuh"
+#include "../../common.h"
+#include "../../cuda_common.cuh"
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include <cstdlib>
@@ -21,15 +21,15 @@ void sum_array_cpu(int *a, int *b, int *c, int size) {
   }
 }
 
-int main() {
+int sumarrayexample() {
   int size = 10000;
   int block_size = 128;
-
-  cudaError error;
-
   int NO_BYTES = size * sizeof(int);
   // create host pointers
-  int *hostA, hostB, hostResults, hostC;
+  int * hostA;
+  int * hostB;
+  int * hostResults;
+  int * hostC;
 
   // allocate memory for host pointers
   hostA = (int *)malloc(NO_BYTES);
@@ -53,10 +53,12 @@ int main() {
   sum_array_cpu(hostA, hostB, hostC, size);
 
   // device pointers
-  int *deviceA, deviceB, deviceC;
-  gpuErrchk(cudaMalloc((int **)&deviceA, NO_BYTES));
-  gpuErrchk(cudaMalloc((int **)&deviceB, NO_BYTES));
-  gpuErrchk(cudaMalloc((int **)&deviceC, NO_BYTES));
+  int *deviceA;
+  int * deviceB;
+  int * deviceC;
+  cudaMalloc((int **)&deviceA, NO_BYTES);
+  cudaMalloc((int **)&deviceB, NO_BYTES);
+  cudaMalloc((int **)&deviceC, NO_BYTES);
 
   // memory transfer host -> device
   cudaMemcpy(deviceA, hostA, NO_BYTES, cudaMemcpyHostToDevice);
@@ -75,7 +77,7 @@ int main() {
   cudaMemcpy(hostResults, deviceC, NO_BYTES, cudaMemcpyDeviceToHost);
 
   // array comparision
-  compare_arrays(hostC, hostResults);
+  compare_arrays(hostC, hostResults,size);
 
   // free device memory
   cudaFree(deviceC);
