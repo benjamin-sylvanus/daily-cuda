@@ -1,7 +1,7 @@
+#include "common.h"
 #include "cuda_common.cuh"
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include "common.h"
 #include <cstdlib>
 #include <cstring>
 #include <stdio.h>
@@ -62,7 +62,7 @@ int main() {
   cudaMemcpy(deviceA, hostA, NO_BYTES, cudaMemcpyHostToDevice);
   cudaMemcpy(deviceB, hostB, NO_BYTES, cudaMemcpyHostToDevice);
 
-  //kernel launch parameters
+  // kernel launch parameters
   dim3 block(block_size);
   dim3 grid((size / block.x) + 1);
 
